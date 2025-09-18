@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{--accent:#0066cc;--muted:#666;--card:#fff;--bg:#f5f7fb}
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:var(--bg); color:#111}
+    header{background:#fff;padding:20px 24px;border-bottom:1px solid #e6edf3;display:flex;align-items:center;gap:16px}
+    .logo{font-weight:700;color:var(--accent);font-size:20px}
+    .container{max-width:1200px;margin:20px auto;padding:0 16px}
+
+    .filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+    .filters select,.filters .chip{padding:8px 10px;border-radius:6px;border:1px solid #e2eef8;background:#fff}
+
+    .results-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .results-meta .count{color:var(--muted)}
+
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    @media (max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:420px){.grid{grid-template-columns:repeat(1,1fr)}}
+
+    .card{background:var(--card);border-radius:8px;padding:12px;border:1px solid #e6eef6;display:flex;flex-direction:column;gap:10px}
+    .thumb{width:100%;aspect-ratio:1/1;display:block;object-fit:contain;background:#f8fafc;border-radius:6px}
+    .title{font-size:14px;line-height:1.3;color:#0b2540;min-height:40px}
+    .price-row{display:flex;justify-content:space-between;align-items:center}
+    .price{font-weight:700;color:#d64545}
+    .meta{font-size:12px;color:var(--muted)}
+    .actions{display:flex;gap:8px}
+    .btn{padding:8px 10px;border-radius:6px;border:1px solid #dbeefc;background:#fff;cursor:pointer;font-size:13px}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+    footer{padding:30px;text-align:center;color:var(--muted)}
+  </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0066cc">
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("Service Worker Registered"));
+  }
+</script>
+
+</head>
+<body>
+  <header>
+    <div class="logo">Wheelcleaner</div>
+  </header>
+
+  <main class="container">
+    <div class="filters">
+      <div class="chip">All Categories ▾</div>
+      <select id="sortSelect">
+        <option value="relevance">Sort by: Best Match</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="sales">Bestselling</option>
+        <option value="recent">Recently Listed</option>
+        <option value="reviews">Customer Review</option>
+      </select>
+      <div style="margin-left:auto;color:var(--muted)" id="resultsCount">19 results</div>
+    </div>
+
+    <div class="results-meta">
+      <div class="count" id="searchQueryText">Showing results for "110-63-4"</div>
+      <div class="view-controls meta">List / Grid</div>
+    </div>
+
+    <section class="grid" id="productGrid">
+      <!-- product cards injected here -->
+    </section>
+
+    <div style="margin-top:18px;display:flex;justify-content:center">
+      <button class="btn">Prev</button>
+      <div style="width:12px"></div>
+      <button class="btn primary">Next</button>
+    </div>
+  </main>
+
+  <footer>
+    <p>Any questions or suggestions? Please let us know.</p>
+  </footer>
+
+  <script>
+    // Sample products array with 19 entries, themed as wheel cleaners. Images are from provided URLs.
+    const imageUrls = [
+      'https://img4.dhresource.com/webp/m/300x300/f3/albu/ys/m/28/0f2f1e49-5032-4bb4-95fb-595f74fdeac2.jpg',
+      'https://img4.dhresource.com/webp/m/300x300/f3/albu/ys/o/22/12c8aba4-38c6-4eb5-915e-5682fda2e6be.jpg',
+      'https://img4.dhresource.com/webp/m/300x300/f3/albu/ys/m/28/c08433b2-0e2e-4992-89e4-5eeb4542af14.jpg'
+    ];
+
+    function getRandomImage() {
+      return imageUrls[Math.floor(Math.random() * imageUrls.length)];
+    }
+
+    const products = [
+      {
+        id: 1,
+        title: 'High Purity Cleaner 110-63-4 Industrial Grade — 10000ml',
+        price: '$250',
+        rating: '4.7',
+        orders: '1.2k',
+        seller: 'ChemSupply Co.',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 2,
+        title: 'Factory Direct Cleaner CAS 110-63-4 — 3000ml',
+        price: '$650',
+        rating: '4.5',
+        orders: '890',
+        seller: 'GlobalChem Traders',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 3,
+        title: 'Butanedioic Acid 110-63-4 Free Samples Available — 5000ml',
+        price: '$800',
+        rating: '4.3',
+        orders: '430',
+        seller: 'BioChem Wholesale',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 4,
+        title: 'Customizable 110-63-4 Cleaner for Cosmetics — 2000ml',
+        price: '$450',
+        rating: '4.8',
+        orders: '2.1k',
+        seller: 'PureLab Supplies',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 5,
+        title: 'Bulk Wholesale Cleaner 110-63-4 with Local Shipping — 8000ml',
+        price: '$1200',
+        rating: '4.2',
+        orders: '567',
+        seller: 'EastTrade Chemicals',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 6,
+        title: 'Premium Grade 110-63-4 for Research — 1000ml',
+        price: '$220',
+        rating: '4.6',
+        orders: '345',
+        seller: 'SciChem Distributors',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 7,
+        title: '110-63-4 Succinic Acid Derivative Wholesale — 4000ml',
+        price: '$400',
+        rating: '4.4',
+        orders: '789',
+        seller: 'ApexChem',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 8,
+        title: 'High Quality Cleaner 110-63-4 Bulk Supply — 6000ml',
+        price: '$700',
+        rating: '4.9',
+        orders: '1.5k',
+        seller: 'ProClean Labs',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 9,
+        title: 'Industrial Cleaner CAS 110-63-4 — 2500ml',
+        price: '$600',
+        rating: '4.1',
+        orders: '234',
+        seller: 'WheelChem Inc.',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 10,
+        title: '99.9% Pure Cleaner 110-63-4 — 7000ml',
+        price: '$1200',
+        rating: '4.7',
+        orders: '980',
+        seller: 'Elite Suppliers',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 11,
+        title: 'Fast Delivery Cleaner 110-63-4 US Stock — 1500ml',
+        price: '$300',
+        rating: '4.5',
+        orders: '1.1k',
+        seller: 'SpeedChem',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 12,
+        title: 'Eco-Friendly 110-63-4 Cleaner — 9000ml',
+        price: '$1800',
+        rating: '4.3',
+        orders: '456',
+        seller: 'GreenWheel Co.',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 13,
+        title: 'Professional Grade Cleaner for Wheels 110-63-4 — 3500ml',
+        price: '$750',
+        rating: '4.6',
+        orders: '678',
+        seller: 'AutoChem Pros',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 14,
+        title: 'Bulk Pack Cleaner 110-63-4 Free Shipping — 5000ml',
+        price: '$800',
+        rating: '4.4',
+        orders: '1.3k',
+        seller: 'BulkBuy Chemicals',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 15,
+        title: 'High Concentration 110-63-4 Cleaner — 2000ml',
+        price: '$400',
+        rating: '4.8',
+        orders: '567',
+        seller: 'ConcClean',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 16,
+        title: 'US Warehouse Cleaner 110-63-4 — 4000ml',
+        price: '$780',
+        rating: '4.2',
+        orders: '890',
+        seller: 'USAChem',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 17,
+        title: 'Foaming Cleaner 110-63-4 — 6000ml',
+        price: '$900',
+        rating: '4.5',
+        orders: '432',
+        seller: 'FoamWheel',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 18,
+        title: 'Research Lab Cleaner 110-63-4 — 1000ml',
+        price: '$200',
+        rating: '4.7',
+        orders: '210',
+        seller: 'LabPure',
+        image: getRandomImage(),
+        link: '#'
+      },
+      {
+        id: 19,
+        title: 'Economic Cleaner 110-63-4 Bulk — 8000ml',
+        price: '$1200',
+        rating: '4.1',
+        orders: '765',
+        seller: 'EconoChem',
+        image: getRandomImage(),
+        link: '#'
+      }
+    ];
+
+    const grid = document.getElementById('productGrid');
+    const resultsCount = document.getElementById('resultsCount');
+
+    function renderProducts(list){
+      grid.innerHTML = '';
+      list.forEach(p => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.innerHTML = `
+          <a href="${p.link}" style="text-decoration:none;color:inherit">
+            <img class="thumb" loading="lazy" src="${p.image}" alt="${escapeHtml(p.title)}"/>
+            <div class="title">${escapeHtml(p.title)}</div>
+          </a>
+          <div class="price-row">
+            <div>
+              <div class="price">${p.price}</div>
+              <div class="meta">${p.rating} ★ · ${p.orders} orders</div>
+            </div>
+            <div class="meta">Seller: ${escapeHtml(p.seller)}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="meta">Ships from: China</div>
+            <div class="actions">
+              <button class="btn">Contact</button>
+              <button class="btn primary" onclick="window.location.href='buynow.html?id=${p.id}'">Buy Now</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+      resultsCount.textContent = `${list.length} results`;
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>\"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"}[m]));
+    }
+
+    // initial render
+    renderProducts(products);
+
+    // sort select
+    document.getElementById('sortSelect').addEventListener('change', (e)=>{
+      const v = e.target.value;
+      const copy = [...products];
+      if(v === 'price-asc'){
+        copy.sort((a,b)=>parseFloat(a.price.replace(/[^0-9.-]+/g,'')) - parseFloat(b.price.replace(/[^0-9.-]+/g,'')));
+      }
+      if(v === 'price-desc'){
+        copy.sort((a,b)=>parseFloat(b.price.replace(/[^0-9.-]+/g,'')) - parseFloat(a.price.replace(/[^0-9.-]+/g,'')));
+      }
+      if(v === 'sales'){
+        copy.sort((a,b)=>parseSales(b.orders) - parseSales(a.orders));
+      }
+      // For 'recent' and 'reviews', simulate by shuffling or basic sort (extend as needed)
+      if(v === 'recent'){
+        copy.sort((a,b) => Math.random() - 0.5); // Simulate recent
+      }
+      if(v === 'reviews'){
+        copy.sort((a,b) => parseFloat(b.rating) - parseFloat(a.rating));
+      }
+      renderProducts(copy);
+    });
+
+    function parseSales(s){
+      if(!s) return 0; 
+      s = String(s).toLowerCase();
+      if(s.includes('k')) return parseFloat(s.replace('k','')) * 1000;
+      return parseFloat(s) || 0;
+    }
+  </script>
+</body>
+</html>

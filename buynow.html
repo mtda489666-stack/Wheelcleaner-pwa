@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{--accent:#0066cc;--muted:#666;--card:#fff;--bg:#f5f7fb}
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:var(--bg); color:#111}
+    header{background:#fff;padding:20px 24px;border-bottom:1px solid #e6edf3;display:flex;align-items:center;gap:16px}
+    .logo{font-weight:700;color:var(--accent);font-size:20px}
+    .container{max-width:800px;margin:20px auto;padding:0 16px}
+
+    .product-detail{padding:20px;background:var(--card);border-radius:8px;border:1px solid #e6eef6;display:flex;gap:20px}
+    @media (max-width:600px){.product-detail{flex-direction:column}}
+    .product-image{width:300px;aspect-ratio:1/1;object-fit:contain;background:#f8fafc;border-radius:6px}
+    .product-info{flex:1}
+    .product-title{font-size:24px;color:#0b2540;margin-bottom:10px}
+    .product-price{font-weight:700;color:#d64545;font-size:20px;margin-bottom:10px}
+    .product-meta{font-size:14px;color:var(--muted);margin-bottom:20px}
+    .buy-button{padding:12px 24px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:16px;cursor:pointer}
+
+    footer{padding:30px;text-align:center;color:var(--muted)}
+  </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0066cc">
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("Service Worker Registered"));
+  }
+</script>
+
+</head>
+<body>
+  <header>
+    <div class="logo">Wheelcleaner</div>
+  </header>
+
+  <main class="container">
+    <section class="product-detail" id="productDetail">
+      <!-- Product details injected here -->
+    </section>
+  </main>
+
+  <footer>
+    <p>Any questions or suggestions? Please let us know.</p>
+  </footer>
+
+  <script>
+    // Product data matching the previous file
+    const products = [
+      { id: 1, title: 'High Purity Cleaner 110-63-4 Industrial Grade — 10000ml', price: '$250', image: '' },
+      { id: 2, title: 'Factory Direct Cleaner CAS 110-63-4 — 3000ml', price: '$650', image: '' },
+      { id: 3, title: 'Butanedioic Acid 110-63-4 Free Samples Available — 5000ml', price: '$800', image: '' },
+      { id: 4, title: 'Customizable 110-63-4 Cleaner for Cosmetics — 2000ml', price: '$450', image: '' },
+      { id: 5, title: 'Bulk Wholesale Cleaner 110-63-4 with Local Shipping — 8000ml', price: '$1200', image: '' },
+      { id: 6, title: 'Premium Grade 110-63-4 for Research — 1000ml', price: '$220', image: '' },
+      { id: 7, title: '110-63-4 Succinic Acid Derivative Wholesale — 4000ml', price: '$400', image: '' },
+      { id: 8, title: 'High Quality Cleaner 110-63-4 Bulk Supply — 6000ml', price: '$700', image: '' },
+      { id: 9, title: 'Industrial Cleaner CAS 110-63-4 — 2500ml', price: '$600', image: '' },
+      { id: 10, title: '99.9% Pure Cleaner 110-63-4 — 7000ml', price: '$1200', image: '' },
+      { id: 11, title: 'Fast Delivery Cleaner 110-63-4 US Stock — 1500ml', price: '$300', image: '' },
+      { id: 12, title: 'Eco-Friendly 110-63-4 Cleaner — 9000ml', price: '$1800', image: '' },
+      { id: 13, title: 'Professional Grade Cleaner for Wheels 110-63-4 — 3500ml', price: '$750', image: '' },
+      { id: 14, title: 'Bulk Pack Cleaner 110-63-4 Free Shipping — 5000ml', price: '$800', image: '' },
+      { id: 15, title: 'High Concentration 110-63-4 Cleaner — 2000ml', price: '$400', image: '' },
+      { id: 16, title: 'US Warehouse Cleaner 110-63-4 — 4000ml', price: '$780', image: '' },
+      { id: 17, title: 'Foaming Cleaner 110-63-4 — 6000ml', price: '$900', image: '' },
+      { id: 18, title: 'Research Lab Cleaner 110-63-4 — 1000ml', price: '$200', image: '' },
+      { id: 19, title: 'Economic Cleaner 110-63-4 Bulk — 8000ml', price: '$1200', image: '' }
+    ];
+
+    // Image URLs from the previous file
+    const imageUrls = [
+      'https://img4.dhresource.com/webp/m/300x300/f3/albu/ys/m/28/0f2f1e49-5032-4bb4-95fb-595f74fdeac2.jpg',
+      'https://img4.dhresource.com/webp/m/300x300/f3/albu/ys/o/22/12c8aba4-38c6-4eb5-915e-5682fda2e6be.jpg',
+      'https://img4.dhresource.com/webp/m/300x300/f3/albu/ys/m/28/c08433b2-0e2e-4992-89e4-5eeb4542af14.jpg'
+    ];
+
+    function getRandomImage() {
+      return imageUrls[Math.floor(Math.random() * imageUrls.length)];
+    }
+
+    // Assign random images to products
+    products.forEach(p => { p.image = getRandomImage(); });
+
+    // Get product ID from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = parseInt(urlParams.get('id')) || 1; // Default to 1 if no ID
+    const product = products.find(p => p.id === productId);
+
+    // Extract unit amount from title (e.g., "10000ml")
+    const unitMatch = product.title.match(/—\s*(\d+ml)/i);
+    const unitAmount = unitMatch ? unitMatch[1] : 'Unknown Quantity';
+
+    // Set page title with unit amount
+    document.title = `Buy Now - ${product.title.split(' — ')[0]} ${unitAmount} | Wheelcleaner`;
+
+    // Render product details
+    const detailSection = document.getElementById('productDetail');
+    detailSection.innerHTML = `
+      <img class="product-image" src="${product.image}" alt="${escapeHtml(product.title)}"/>
+      <div class="product-info">
+        <div class="product-title">${escapeHtml(product.title)}</div>
+        <div class="product-price">${product.price}</div>
+        <div class="product-meta">Rating: ${product.rating} ★ | Orders: ${product.rating}k | Seller: ${escapeHtml(product.seller)} | Ships from: China</div>
+        <button class="buy-button" onclick="window.location.href='purchase-confirmation.html?id=${product.id}'">Confirm Purchase</button>
+      </div>
+    `;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>\"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"}[m]));
+    }
+  </script>
+</body>
+</html>
