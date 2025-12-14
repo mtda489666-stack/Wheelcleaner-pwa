@@ -1,104 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{--accent:#0066cc;--muted:#666;--card:#fff;--bg:#f5f7fb}
-    *{box-sizing:border-box}
-    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:var(--bg); color:#111}
-    header{background:#fff;padding:20px 24px;border-bottom:1px solid #e6edf3;display:flex;align-items:center;gap:16px}
-    .logo{font-weight:700;color:var(--accent);font-size:20px}
-    .container{max-width:1200px;margin:20px auto;padding:0 16px}
-
-    .confirmation-message{padding:20px;background:var(--card);border-radius:8px;border:1px solid #e6eef6;text-align:center;margin-bottom:20px}
-    .confirmation-message h2{font-size:24px;color:#0b2540}
-    .confirmation-message p{font-size:16px;color:var(--muted)}
-
-    .chatbot-container{width:100%;min-height:700px}
-
-    footer{padding:30px;text-align:center;color:var(--muted)}
-  </style>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0066cc">
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("Service Worker Registered"));
-  }
+<script 
+  src="https://www.paypal.com/sdk/js?client-id=BAAtc_Cxjh7DRCag_yXzJ9R5TnEYcT8eoMKtO5i6PLFsKNXdCApsquzCbbuoLWOvSRqxg7OdUwD_d6MVuQ&components=hosted-buttons&disable-funding=venmo&currency=NZD">
 </script>
 
-</head>
-<body>
-  <header>
-    <div class="logo">Wheelcleaner</div>
-  </header>
 
-  <main class="container">
-    <section class="confirmation-message" id="confirmationMessage">
-      <!-- Confirmation message injected here -->
-    </section>
-    <div class="chatbot-container">
-      <iframe
-        src="https://www.chatbase.co/chatbot-iframe/-Lm9DKxApycyX3cTzApjz"
-        width="100%"
-        style="height: 100%; min-height: 700px"
-        frameborder="0"
-      ></iframe>
-    </div>
-  </main>
-
-  <footer>
-    <p>Any questions or suggestions? Please let us know.</p>
-  </footer>
-
-  <script>
-    // Product data matching the previous files
-    const products = [
-      { id: 1, title: 'High Purity Cleaner 110-63-4 Industrial Grade — 10000ml', price: '$250' },
-      { id: 2, title: 'Factory Direct Cleaner CAS 110-63-4 — 3000ml', price: '$650' },
-      { id: 3, title: 'Butanedioic Acid 110-63-4 Free Samples Available — 5000ml', price: '$800' },
-      { id: 4, title: 'Customizable 110-63-4 Cleaner for Cosmetics — 2000ml', price: '$450' },
-      { id: 5, title: 'Bulk Wholesale Cleaner 110-63-4 with Local Shipping — 8000ml', price: '$1200' },
-      { id: 6, title: 'Premium Grade 110-63-4 for Research — 1000ml', price: '$220' },
-      { id: 7, title: '110-63-4 Succinic Acid Derivative Wholesale — 4000ml', price: '$400' },
-      { id: 8, title: 'High Quality Cleaner 110-63-4 Bulk Supply — 6000ml', price: '$700' },
-      { id: 9, title: 'Industrial Cleaner CAS 110-63-4 — 2500ml', price: '$600' },
-      { id: 10, title: '99.9% Pure Cleaner 110-63-4 — 7000ml', price: '$1200' },
-      { id: 11, title: 'Fast Delivery Cleaner 110-63-4 US Stock — 1500ml', price: '$300' },
-      { id: 12, title: 'Eco-Friendly 110-63-4 Cleaner — 9000ml', price: '$1800' },
-      { id: 13, title: 'Professional Grade Cleaner for Wheels 110-63-4 — 3500ml', price: '$750' },
-      { id: 14, title: 'Bulk Pack Cleaner 110-63-4 Free Shipping — 5000ml', price: '$800' },
-      { id: 15, title: 'High Concentration 110-63-4 Cleaner — 2000ml', price: '$400' },
-      { id: 16, title: 'US Warehouse Cleaner 110-63-4 — 4000ml', price: '$780' },
-      { id: 17, title: 'Foaming Cleaner 110-63-4 — 6000ml', price: '$900' },
-      { id: 18, title: 'Research Lab Cleaner 110-63-4 — 1000ml', price: '$200' },
-      { id: 19, title: 'Economic Cleaner 110-63-4 Bulk — 8000ml', price: '$1200' }
-    ];
-
-    // Get product ID from URL parameter (passed from buynow.html)
-    const urlParams = new URLSearchParams(window.location.search);
-    const productId = parseInt(urlParams.get('id')) || 1; // Default to 1 if no ID
-    const product = products.find(p => p.id === productId);
-
-    // Extract unit amount from title (e.g., "10000ml")
-    const unitMatch = product.title.match(/—\s*(\d+ml)/i);
-    const unitAmount = unitMatch ? unitMatch[1] : 'Unknown Quantity';
-
-    // Set page title with confirmation and unit amount
-    document.title = `Purchase Confirmation - ${product.title.split(' — ')[0]} ${unitAmount} | Wheelcleaner`;
-
-    // Render confirmation message
-    const messageSection = document.getElementById('confirmationMessage');
-    messageSection.innerHTML = `
-      <h2>To make payment please contact jianwang@wheeelzchina.net</h2>
-      <p>Any questions? ask Eric!<strong>${escapeHtml(product.title)}</strong> for <strong>${product.price}</strong>. Please use the chatbot below for any questions or further assistance.</p>
-    `;
-
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>\"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"}[m]));
-    }
-  </script>
-</body>
-</html>
+<div id="paypal-container-NPLA5P622ZZSE"></div>
+<script>
+  paypal.HostedButtons({
+    hostedButtonId: "NPLA5P622ZZSE",
+  }).render("#paypal-container-NPLA5P622ZZSE")
+</script>
