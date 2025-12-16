@@ -1,178 +1,429 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{--accent:#0066cc;--muted:#666;--card:#fff;--bg:#f5f7fb}
-    *{box-sizing:border-box}
-    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:var(--bg); color:#111}
-    header{background:#fff;padding:20px 24px;border-bottom:1px solid #e6edf3;display:flex;align-items:center;gap:16px}
-    .logo{font-weight:700;color:var(--accent);font-size:20px}
-    .container{max-width:1200px;margin:20px auto;padding:0 16px}
+version: '3.8'
+services:
+  paypal-server:
+    build: .
+    container_name: wheelcleaner-paypal-server
+    environment:
+      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
+      - PAYPAL_SECRET=${PAYPAL_SECRET}
+      - PAYPAL_ENV=${PAYPAL_ENV:-sandbox}
+      - CLIENT_ORIGIN=${CLIENT_ORIGIN:-}
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=${DATABASE_URL:-}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.paypal-server.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.paypal-server.entrypoints=websecure"
+      - "traefik.http.routers.paypal-server.tls=true"
+      - "traefik.http.routers.paypal-server.tls.certresolver=le"
+      - "traefik.http.services.paypal-server.loadbalancer.server.port=3000"
+    expose:
+      - "3000"
+    networks:
+      - web
+      - backend
+    depends_on:
+      - postgres
 
-    .confirmation-message{padding:20px;background:var(--card);border-radius:8px;border:1px solid #e6eef6;text-align:center;margin-bottom:20px}
-    .confirmation-message h2{font-size:24px;color:#0b2540}
-    .confirmation-message p{font-size:16px;color:var(--muted)}
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${PGUSER:-wheelcleaner}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-examplepassword}
+      POSTGRES_DB: ${PGDATABASE:-wheelcleaner}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - backend
 
-    .pay-section{padding:20px;background:var(--card);border-radius:8px;border:1px solid #e6eef6;text-align:center}
-    .price{font-size:20px;font-weight:700;color:#0b2540;margin:12px 0}
-    #paypal-button-container{display:inline-block}
-    .success{color:green;margin-top:12px}
-    .error{color:#b00020;margin-top:12px}
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - web
 
-    footer{padding:30px;text-align:center;color:var(--muted)}
-  </style>
-</head>
-<body>
-  <header>
-    <div class="logo">Wheelcleaner</div>
-  </header>
+volumes:
+  pg-data:
 
-  <main class="container">
-    <section class="confirmation-message" id="confirmationMessage">
-      <!-- Confirmation message injected here -->
-    </section>
+networks:
+  web:
+  backend:
 
-    <!-- PayPal checkout section -->
-    <section class="pay-section" id="paySection" style="display:none">
-      <div id="orderSummary" aria-live="polite"></div>
-      <div class="price" id="orderPrice"></div>
-      <div id="paypal-button-container"></div>
-      <div id="paymentResult"></div>
-    </section>
-  </main>
+// knexfile.js - configuration for knex migrations
+require('dotenv').config();
 
-  <footer>
-    <p>Any questions or suggestions? Please let us know.</p>
-  </footer>
-
-  <!--
-    IMPORTANT:
-    - Replaced previous client-id script tag with the snippet provided.
-    - The page still uses the product price parsed from the selected product on the buy-now page.
-    - The PayPal SDK is loaded with currency=NZD (per the provided snippet). The createOrder call uses the parsed numeric amount.
-  -->
-  <script src="https://www.paypal.com/sdk/js?client-id=Ac56s2jq05YpX1mUQDpNc14mQCrd3x-vh5fdepzvP-vgZLiArDkxMInSIbpkn8joIWGK7C5ZS3vGkcQZ&components=buttons"></script>
-
-  <script>
-    // Product data matching the previous files
-    const products = [
-      { id: 1, title: 'High Purity Cleaner 110-63-4 Industrial Grade — 10000ml', price: '$250' },
-      { id: 2, title: 'Factory Direct Cleaner CAS 110-63-4 — 3000ml', price: '$650' },
-      { id: 3, title: 'Butanedioic Acid 110-63-4 Free Samples Available — 5000ml', price: '$800' },
-      { id: 4, title: 'Customizable 110-63-4 Cleaner for Cosmetics — 2000ml', price: '$450' },
-      { id: 5, title: 'Bulk Wholesale Cleaner 110-63-4 with Local Shipping — 8000ml', price: '$1200' },
-      { id: 6, title: 'Premium Grade 110-63-4 for Research — 1000ml', price: '$220' },
-      { id: 7, title: '110-63-4 Succinic Acid Derivative Wholesale — 4000ml', price: '$400' },
-      { id: 8, title: 'High Quality Cleaner 110-63-4 Bulk Supply — 6000ml', price: '$700' },
-      { id: 9, title: 'Industrial Cleaner CAS 110-63-4 — 2500ml', price: '$600' },
-      { id: 10, title: '99.9% Pure Cleaner 110-63-4 — 7000ml', price: '$1200' },
-      { id: 11, title: 'Fast Delivery Cleaner 110-63-4 US Stock — 1500ml', price: '$300' },
-      { id: 12, title: 'Eco-Friendly 110-63-4 Cleaner — 9000ml', price: '$1800' },
-      { id: 13, title: 'Professional Grade Cleaner for Wheels 110-63-4 — 3500ml', price: '$750' },
-      { id: 14, title: 'Bulk Pack Cleaner 110-63-4 Free Shipping — 5000ml', price: '$800' },
-      { id: 15, title: 'High Concentration 110-63-4 Cleaner — 2000ml', price: '$400' },
-      { id: 16, title: 'US Warehouse Cleaner 110-63-4 — 4000ml', price: '$780' },
-      { id: 17, title: 'Foaming Cleaner 110-63-4 — 6000ml', price: '$900' },
-      { id: 18, title: 'Research Lab Cleaner 110-63-4 — 1000ml', price: '$200' },
-      { id: 19, title: 'Economic Cleaner 110-63-4 Bulk — 8000ml', price: '$1200' }
-    ];
-
-    // Get product ID from URL parameter (passed from buynow.html)
-    const urlParams = new URLSearchParams(window.location.search);
-    const productId = parseInt(urlParams.get('id')) || 1; // Default to 1 if no ID
-    const product = products.find(p => p.id === productId) || products[0];
-
-    // Extract unit amount from title (e.g., "10000ml")
-    const unitMatch = product.title.match(/—\s*(\d+ml)/i);
-    const unitAmount = unitMatch ? unitMatch[1] : 'Unknown Quantity';
-
-    // Set page title with confirmation and unit amount
-    document.title = `Purchase Confirmation - ${product.title.split(' — ')[0]} ${unitAmount} | Wheelcleaner`;
-
-    // Helper to escape HTML
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>\"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"}[m]));
+module.exports = {
+  development: {
+    client: 'pg',
+    connection: process.env.DATABASE_URL || {
+      host: process.env.PGHOST || 'postgres',
+      user: process.env.PGUSER || 'wheelcleaner',
+      password: process.env.PGPASSWORD || 'examplepassword',
+      database: process.env.PGDATABASE || 'wheelcleaner',
+      port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432
+    },
+    migrations: {
+      directory: './migrations'
     }
-
-    // Parse numeric amount from price string like "$250" -> 250.00
-    function parseAmount(priceStr) {
-      const n = parseFloat(priceStr.replace(/[^0-9.-]+/g, ""));
-      return isNaN(n) ? 0 : n.toFixed(2);
+  },
+  test: {
+    client: 'pg',
+    connection: process.env.DATABASE_URL || {
+      host: process.env.PGHOST || 'localhost',
+      user: process.env.PGUSER || 'wheelcleaner',
+      password: process.env.PGPASSWORD || 'examplepassword',
+      database: process.env.PGDATABASE || 'wheelcleaner_test',
+      port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432
+    },
+    migrations: {
+      directory: './migrations'
     }
-
-    // Render confirmation message and show PayPal section
-    const messageSection = document.getElementById('confirmationMessage');
-    const paySection = document.getElementById('paySection');
-    const orderSummary = document.getElementById('orderSummary');
-    const orderPrice = document.getElementById('orderPrice');
-    const paymentResult = document.getElementById('paymentResult');
-
-    const amount = parseAmount(product.price);
-    messageSection.innerHTML = `
-      <h2>Thank You — Ready to Checkout</h2>
-      <p>You are about to purchase <strong>${escapeHtml(product.title)}</strong> for <strong>${escapeHtml(product.price)}</strong>.</p>
-      <p>Please complete your payment using PayPal below. You will receive an email confirmation from PayPal after successful payment.</p>
-    `;
-
-    orderSummary.innerHTML = `<div><strong>Item:</strong> ${escapeHtml(product.title)}</div>`;
-    orderPrice.textContent = `${product.price}`;
-
-    // Show PayPal section now that data is ready
-    paySection.style.display = 'block';
-
-    // Ensure paypal SDK loaded
-    if (typeof paypal === 'undefined') {
-      paymentResult.innerHTML = '<div class="error">PayPal SDK failed to load. Make sure the provided client id and network access are correct.</div>';
-    } else {
-      // Render PayPal Buttons
-      paypal.Buttons({
-        style: {
-          layout: 'vertical',
-          color:  'blue',
-          shape:  'rect',
-          label:  'paypal'
-        },
-        createOrder: function(data, actions) {
-          // Create the order on the client. For production it's recommended to create order on your server.
-          return actions.order.create({
-            purchase_units: [{
-              amount: {
-                value: amount.toString(), // decimal string, e.g. "250.00"
-                currency_code: 'NZD'
-              },
-              description: product.title
-            }],
-            application_context: {
-              brand_name: 'Wheelcleaner',
-              shipping_preference: 'NO_SHIPPING' // change if shipping required
-            }
-          });
-        },
-        onApprove: function(data, actions) {
-          return actions.order.capture().then(function(details) {
-            // Show a success message to the buyer
-            paymentResult.innerHTML = `<div class="success">Payment completed by <strong>${escapeHtml((details.payer && details.payer.name && details.payer.name.given_name) || '')} ${escapeHtml((detai[...]
-            // Optionally: send details to your server to fulfill the order
-            console.log('Order details', details);
-            // Update page title / content if desired
-            messageSection.innerHTML = `
-              <h2>Payment Confirmed</h2>
-              <p>Thank you! Your payment for <strong>${escapeHtml(product.title)}</strong> was successful.</p>
-              <p>Transaction ID: <code>${escapeHtml(details.id || '')}</code></p>
-            `;
-          });
-        },
-        onCancel: function (data) {
-          paymentResult.innerHTML = `<div class="error">Payment was cancelled. You can try again or contact support.</div>`;
-        },
-        onError: function (err) {
-          console.error(err);
-          paymentResult.innerHTML = `<div class="error">An error occurred during payment. Please try again later.</div>`;
-        }
-      }).render('#paypal-button-container');
+  },
+  production: {
+    client: 'pg',
+    connection: process.env.DATABASE_URL,
+    migrations: {
+      directory: './migrations'
     }
-  </script>
-</body>
-</html>
+  }
+};
+
+{
+  "name": "wheelcleaner-paypal-server",
+  "version": "1.0.0",
+  "description": "Server for Wheelcleaner PayPal create/capture with Postgres persistence, Traefik TLS, tests and CI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "migrate": "knex migrate:latest --knexfile ./knexfile.js",
+    "test": "mocha --exit"
+  },
+  "author": "Wheelcleaner",
+  "license": "MIT",
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "csurf": "^1.11.0",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "knex": "^2.5.1",
+    "node-fetch": "^2.6.7",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "nock": "^13.3.0",
+    "nodemon": "^2.0.22",
+    "supertest": "^6.4.2"
+  }
+}
+
+# Wheelcleaner — PayPal Server (Postgres + Traefik + CI)
+
+This branch adds a Postgres-backed server that performs PayPal order create & capture on the server, with Traefik reverse proxy + Let's Encrypt example, migrations, tests, and CI.
+
+Included files
+- server.js — Express server implementing server-side PayPal create & capture endpoints, CSRF protection and CORS.
+- db.js — persistence layer using Knex + Postgres.
+- knexfile.js and migrations/20251216_create_orders.js — migration to create the orders table.
+- docker-compose.traefik.yml — example composition with Traefik for TLS termination and Postgres service.
+- .env.example — example environment variables (LETSENCRYPT_EMAIL set to wangj84@protonmail.com; DOMAIN left blank).
+- test/server.test.js — tests (mocha/supertest/nock).
+- .github/workflows/ci.yml — GitHub Actions workflow to run migrations and tests on push/PR.
+
+Quick start (local)
+1. Copy `.env.example` -> `.env` and fill:
+   - PAYPAL_CLIENT_ID
+   - PAYPAL_SECRET
+   - Optionally DOMAIN and LETSENCRYPT_EMAIL if you run Traefik in production.
+
+2. Install dependencies:
+   npm ci
+
+3. Run migrations:
+   npm run migrate
+
+4. Start app:
+   npm start
+   or for development:
+   npm run dev
+
+5. Test:
+   npm test
+
+Docker (Traefik example)
+1. Copy `.env.example` -> `.env`, fill `DOMAIN` and `LETSENCRYPT_EMAIL` if you intend to use Traefik + Let's Encrypt.
+2. Start with:
+   docker compose -f docker-compose.traefik.yml up -d --build
+3. Traefik will provision TLS certificates for `DOMAIN` (only if DNS points to the host).
+
+CI
+- The GitHub Actions workflow runs migrations and tests on pushes to main and feature branches.
+
+Security & recommendations
+- Keep PAYPAL_SECRET out of source control; use environment variables / secrets.
+- Test in PayPal sandbox before switching to live credentials.
+- Persist capture/order data to a durable DB (we use Postgres here).
+- Serve the client from the same origin as the API or correctly configure CORS and the `api-base` meta tag in the client.
+- Use HTTPS in production and set NODE_ENV=production to enable secure cookies for CSRF.
+
+If you want, I can:
+- Open a PR for these files on the `feature/paypal-server` branch (I created the branch earlier).
+- Adjust Traefik labels to a specific domain once you provide one.
+- Add a small example of how to call the API from the existing client (purchase-confirmation.html) with CSRF handling.
+
+/**
+ * server.js (exports app; only listens when run directly)
+ * - uses Postgres via knex
+ * - CSRF protection + CORS (credentials)
+ */
+require('dotenv').config();
+const express = require('express');
+const fetch = require('node-fetch');
+const csurf = require('csurf');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const { initDb, saveOrderRecord, updateOrderCapture, getOrder } = require('./db');
+
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '';
+app.use(cors({
+  origin: CLIENT_ORIGIN || true,
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS']
+}));
+
+const csrfProtection = csurf({
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  }
+});
+
+const PAYPAL_CLIENT = process.env.PAYPAL_CLIENT_ID || '';
+const PAYPAL_SECRET = process.env.PAYPAL_SECRET || '';
+const PAYPAL_ENV = process.env.PAYPAL_ENV === 'live' ? 'live' : 'sandbox';
+const PAYPAL_API = PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+
+// Canonical product list (server authoritative)
+const products = [
+  { id: 1, title: 'High Purity Cleaner 110-63-4 Industrial Grade — 10000ml', price: 250.00 },
+  { id: 2, title: 'Factory Direct Cleaner CAS 110-63-4 — 3000ml', price: 650.00 },
+  { id: 3, title: 'Butanedioic Acid 110-63-4 Free Samples Available — 5000ml', price: 800.00 },
+  { id: 4, title: 'Customizable 110-63-4 Cleaner for Cosmetics — 2000ml', price: 450.00 }
+];
+
+async function getAccessToken() {
+  const auth = Buffer.from(`${PAYPAL_CLIENT}:${PAYPAL_SECRET}`).toString('base64');
+  const resp = await fetch(`${PAYPAL_API}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error('Failed to fetch PayPal access token: ' + text);
+  }
+  const json = await resp.json();
+  return json.access_token;
+}
+
+// initialize DB
+initDb().then(() => console.log('DB initialized')).catch(err => console.error('DB init error', err));
+
+// CSRF token endpoint
+app.get('/api/csrf-token', csrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
+// Create PayPal order
+app.post('/api/create-paypal-order', csrfProtection, async (req, res) => {
+  try {
+    const { productId } = req.body;
+    if (typeof productId !== 'number') return res.status(400).json({ error: 'productId required' });
+    const product = products.find(p => p.id === productId);
+    if (!product) return res.status(400).json({ error: 'Invalid productId' });
+
+    const accessToken = await getAccessToken();
+    const orderResp = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        intent: 'CAPTURE',
+        purchase_units: [{
+          amount: { currency_code: 'NZD', value: product.price.toFixed(2) },
+          description: product.title
+        }],
+        application_context: { brand_name: 'Wheelcleaner', shipping_preference: 'NO_SHIPPING' }
+      })
+    });
+    if (!orderResp.ok) {
+      const text = await orderResp.text();
+      console.error('Create order failed', text);
+      return res.status(500).json({ error: 'Failed to create order' });
+    }
+    const orderData = await orderResp.json();
+    await saveOrderRecord({
+      orderId: orderData.id,
+      productId: product.id,
+      status: 'CREATED',
+      amount: product.price,
+      captureData: null
+    });
+    return res.json({ orderID: orderData.id });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Capture PayPal order
+app.post('/api/capture-paypal-order', csrfProtection, async (req, res) => {
+  try {
+    const { orderID } = req.body;
+    if (!orderID) return res.status(400).json({ error: 'orderID required' });
+
+    const accessToken = await getAccessToken();
+    const captureResp = await fetch(`${PAYPAL_API}/v2/checkout/orders/${orderID}/capture`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
+    });
+    if (!captureResp.ok) {
+      const text = await captureResp.text();
+      console.error('Capture failed', text);
+      return res.status(500).json({ error: 'Failed to capture order' });
+    }
+    const captureData = await captureResp.json();
+    await updateOrderCapture(orderID, 'COMPLETED', captureData);
+    return res.json(captureData);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/order/:orderID', async (req, res) => {
+  try {
+    const row = await getOrder(req.params.orderID);
+    if (!row) return res.status(404).json({ error: 'Order not found' });
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/health', (req, res) => res.json({ ok: true, env: PAYPAL_ENV }));
+
+// start server if run directly
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Server listening on ${PORT} (env=${PAYPAL_ENV})`));
+}
+
+module.exports = app;
+
+# Copy to .env and fill values
+
+# Domain used for Traefik routing and TLS (leave blank until you have a domain)
+DOMAIN=
+
+# Let's Encrypt email for notifications and cert registration
+LETSENCRYPT_EMAIL=wangj84@protonmail.com
+
+# PayPal credentials (sandbox or live)
+PAYPAL_CLIENT_ID=your-paypal-client-id
+PAYPAL_SECRET=your-paypal-secret
+PAYPAL_ENV=sandbox
+
+# Postgres settings (if using the docker-compose.traefik.yml included above these are defaults)
+PGUSER=wheelcleaner
+PGPASSWORD=examplepassword
+PGDATABASE=wheelcleaner
+PGHOST=postgres
+PGPORT=5432
+
+# Optional: API origin used in client (purchase-confirmation.html meta api-base)
+CLIENT_ORIGIN=https://your-frontend-origin.example.com
+
+# In CI you might set DATABASE_URL for the DB connection string
+# DATABASE_URL=postgres://user:password@host:5432/dbname
+
+// db.js - knex-based persistence layer for Postgres
+const knexConfig = require('./knexfile');
+const env = process.env.NODE_ENV === 'test' ? 'test' : (process.env.NODE_ENV || 'development');
+const knex = require('knex')(knexConfig[env]);
+
+async function initDb() {
+  // Run migrations if needed (optional). You can also call knex migrate from CLI.
+  await knex.migrate.latest(knexConfig[env].migrations);
+}
+
+async function saveOrderRecord({ orderId, productId, status = 'CREATED', amount = 0, captureData = null }) {
+  const existing = await knex('orders').where({ order_id: orderId }).first();
+  if (existing) {
+    await knex('orders').where({ order_id: orderId }).update({
+      product_id: productId,
+      status,
+      amount,
+      capture_data: captureData ? captureData : null
+    });
+    return existing;
+  } else {
+    const [row] = await knex('orders').insert({
+      order_id: orderId,
+      product_id: productId,
+      status,
+      amount,
+      capture_data: captureData ? captureData : null
+    }).returning('*');
+    return row;
+  }
+}
+
+async function updateOrderCapture(orderId, status, captureData) {
+  const changes = await knex('orders').where({ order_id: orderId }).update({
+    status,
+    capture_data: captureData ? captureData : null
+  });
+  return { changes };
+}
+
+async function getOrder(orderId) {
+  const row = await knex('orders').where({ order_id: orderId }).first();
+  return row;
+}
+
+module.exports = {
+  knex,
+  initDb,
+  saveOrderRecord,
+  updateOrderCapture,
+  getOrder
+};
