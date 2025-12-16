@@ -15,7 +15,11 @@
     .confirmation-message h2{font-size:24px;color:#0b2540}
     .confirmation-message p{font-size:16px;color:var(--muted)}
 
-    .chatbot-container{width:100%;min-height:700px}
+    .pay-section{padding:20px;background:var(--card);border-radius:8px;border:1px solid #e6eef6;text-align:center}
+    .price{font-size:20px;font-weight:700;color:#0b2540;margin:12px 0}
+    #paypal-button-container{display:inline-block}
+    .success{color:green;margin-top:12px}
+    .error{color:#b00020;margin-top:12px}
 
     footer{padding:30px;text-align:center;color:var(--muted)}
   </style>
@@ -29,19 +33,27 @@
     <section class="confirmation-message" id="confirmationMessage">
       <!-- Confirmation message injected here -->
     </section>
-    <div class="chatbot-container">
-      <iframe
-        src="https://www.chatbase.co/chatbot-iframe/-Lm9DKxApycyX3cTzApjz"
-        width="100%"
-        style="height: 100%; min-height: 700px"
-        frameborder="0"
-      ></iframe>
-    </div>
+
+    <!-- PayPal checkout section -->
+    <section class="pay-section" id="paySection" style="display:none">
+      <div id="orderSummary" aria-live="polite"></div>
+      <div class="price" id="orderPrice"></div>
+      <div id="paypal-button-container"></div>
+      <div id="paymentResult"></div>
+    </section>
   </main>
 
   <footer>
     <p>Any questions or suggestions? Please let us know.</p>
   </footer>
+
+  <!--
+    IMPORTANT:
+    - Replace "Ac56s2jq05YpX1mUQDpNc14mQCrd3x-vh5fdepzvP-vgZLiArDkxMInSIbpkn8joIWGK7C5ZS3vGkcQZ_CLIENT_ID" with your actual PayPal Client ID.
+    - For sandbox testing use a sandbox client id and the sandbox environment (https://www.paypal.com/sdk/js?client-id=...&currency=USD).
+    - For production replace with your live client id.
+  -->
+  <script src="https://www.paypal.com/sdk/js?client-id=Ac56s2jq05YpX1mUQDpNc14mQCrd3x-vh5fdepzvP-vgZLiArDkxMInSIbpkn8joIWGK7C5ZS3vGkcQZ_CLIENT_ID&currency=USD"></script>
 
   <script>
     // Product data matching the previous files
@@ -70,7 +82,7 @@
     // Get product ID from URL parameter (passed from buynow.html)
     const urlParams = new URLSearchParams(window.location.search);
     const productId = parseInt(urlParams.get('id')) || 1; // Default to 1 if no ID
-    const product = products.find(p => p.id === productId);
+    const product = products.find(p => p.id === productId) || products[0];
 
     // Extract unit amount from title (e.g., "10000ml")
     const unitMatch = product.title.match(/—\s*(\d+ml)/i);
@@ -79,15 +91,87 @@
     // Set page title with confirmation and unit amount
     document.title = `Purchase Confirmation - ${product.title.split(' — ')[0]} ${unitAmount} | Wheelcleaner`;
 
-    // Render confirmation message
-    const messageSection = document.getElementById('confirmationMessage');
-    messageSection.innerHTML = `
-      <h2>Thank You for Your Purchase!</h2>
-      <p>You have successfully confirmed the purchase of <strong>${escapeHtml(product.title)}</strong> for <strong>${product.price}</strong>. Please use the chatbot below for any questions or further assistance.</p>
-    `;
-
+    // Helper to escape HTML
     function escapeHtml(str) {
       return String(str).replace(/[&<>\"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"}[m]));
+    }
+
+    // Parse numeric amount from price string like "$250" -> 250.00
+    function parseAmount(priceStr) {
+      const n = parseFloat(priceStr.replace(/[^0-9.-]+/g, ""));
+      return isNaN(n) ? 0 : n.toFixed(2);
+    }
+
+    // Render confirmation message and show PayPal section
+    const messageSection = document.getElementById('confirmationMessage');
+    const paySection = document.getElementById('paySection');
+    const orderSummary = document.getElementById('orderSummary');
+    const orderPrice = document.getElementById('orderPrice');
+    const paymentResult = document.getElementById('paymentResult');
+
+    const amount = parseAmount(product.price);
+    messageSection.innerHTML = `
+      <h2>Thank You — Ready to Checkout</h2>
+      <p>You are about to purchase <strong>${escapeHtml(product.title)}</strong> for <strong>${escapeHtml(product.price)}</strong>.</p>
+      <p>Please complete your payment using PayPal below. You will receive an email confirmation from PayPal after successful payment.</p>
+    `;
+
+    orderSummary.innerHTML = `<div><strong>Item:</strong> ${escapeHtml(product.title)}</div>`;
+    orderPrice.textContent = `${product.price}`;
+
+    // Show PayPal section now that data is ready
+    paySection.style.display = 'block';
+
+    // Ensure paypal SDK loaded
+    if (typeof paypal === 'undefined') {
+      paymentResult.innerHTML = '<div class="error">PayPal SDK failed to load. Make sure you replaced the client id in the script URL.</div>';
+    } else {
+      // Render PayPal Buttons
+      paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color:  'blue',
+          shape:  'rect',
+          label:  'paypal'
+        },
+        createOrder: function(data, actions) {
+          // Create the order on the client. For production it's recommended to create order on your server.
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: amount.toString(), // decimal string, e.g. "250.00"
+                currency_code: 'USD'
+              },
+              description: product.title
+            }],
+            application_context: {
+              brand_name: 'Wheelcleaner',
+              shipping_preference: 'NO_SHIPPING' // change if shipping required
+            }
+          });
+        },
+        onApprove: function(data, actions) {
+          return actions.order.capture().then(function(details) {
+            // Show a success message to the buyer
+            paymentResult.innerHTML = `<div class="success">Payment completed by <strong>${escapeHtml(details.payer.name.given_name || '')} ${escapeHtml(details.payer.name.surname || '')}</strong>. Transaction ID: <code>${escapeHtml(details.id)}</code></div>`;
+            // Optionally: send details to your server to fulfill the order
+            console.log('Order details', details);
+            // Update page title / content if desired
+            messageSection.innerHTML = `
+              <h2>Payment Confirmed</h2>
+              <p>Thank you! Your payment for <strong>${escapeHtml(product.title)}</strong> was successful.</p>
+              <p>Transaction ID: <code>${escapeHtml(details.id)}</code></p>
+            `;
+          });
+        },
+        onCancel: function (data) {
+          paymentResult.innerHTML = `<div class="error">Payment was cancelled. You can try again or contact support.</div>`;
+        },
+        onError: function (err) {
+          console.error(err);
+          paymentResult.innerHTML = `<div class="error">An error occurred during payment. Please try again later.</div>`;
+        }
+      }).render('#paypal-button-container');
     }
   </script>
 </body>
