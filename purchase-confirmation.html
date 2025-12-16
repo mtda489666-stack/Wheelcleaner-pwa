@@ -145,8 +145,7 @@
               description: product.title
             }],
             application_context: {
-              brand_name: 'Wheelcleaner',
-              shipping_preference: 'NO_SHIPPING' // change if shipping required
+              brand_name: 'Wheelcleaner Free Shipping'
             }
           });
         },
@@ -158,7 +157,7 @@
             console.log('Order details', details);
             // Update page title / content if desired
             messageSection.innerHTML = `
-              <h2>Payment Confirmed</h2>
+              <h2>Follow the link to make payment https://www.paypal.com/ncp/payment/D8FEH9H85V36C </h2>
               <p>Thank you! Your payment for <strong>${escapeHtml(product.title)}</strong> was successful.</p>
               <p>Transaction ID: <code>${escapeHtml(details.id)}</code></p>
             `;
