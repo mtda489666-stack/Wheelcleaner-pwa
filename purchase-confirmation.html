@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script 
+  src="https://www.paypal.com/sdk/js?client-id=BAAtc_Cxjh7DRCag_yXzJ9R5TnEYcT8eoMKtO5i6PLFsKNXdCApsquzCbbuoLWOvSRqxg7OdUwD_d6MVuQ&components=hosted-buttons&disable-funding=venmo&currency=NZD">
+  </script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
@@ -25,6 +28,12 @@
   </style>
 </head>
 <body>
+  <div id="paypal-container-A9UPRQR3EXNGA"></div>
+<script>
+  paypal.HostedButtons({
+    hostedButtonId: "A9UPRQR3EXNGA",
+  }).render("#paypal-container-A9UPRQR3EXNGA")
+</script>
   <header>
     <div class="logo">Wheelcleaner</div>
   </header>
